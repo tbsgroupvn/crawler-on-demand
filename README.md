@@ -35,7 +35,7 @@ A professional web scraping solution built with FastAPI, Celery, Redis, and mode
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/crawler-on-demand.git
+git clone https://github.com/tbsgroupvn/crawler-on-demand.git
 cd crawler-on-demand
 ```
 
@@ -250,7 +250,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/crawler-on-demand/issues)
+- **Issues**: [GitHub Issues](https://github.com/tbsgroupvn/crawler-on-demand/issues)
 - **Documentation**: See `/docs` folder
 - **API Docs**: http://localhost:8000/docs (when running)
 
