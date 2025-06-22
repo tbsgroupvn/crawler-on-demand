@@ -1,5 +1,4 @@
-﻿version: '3.8'
-
+﻿# Modern Docker Compose file - no version needed
 services:
   # Service Redis để làm message broker cho Celery
   redis:
@@ -7,11 +6,16 @@ services:
     container_name: crawler-redis
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
     networks:
       - crawler-network
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Service API backend với FastAPI
   api:
@@ -23,15 +27,21 @@ services:
       - "8000:8000"
     environment:
       - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=${DATABASE_URL:-sqlite:///./app.db}
+      - DATABASE_URL=sqlite:///app/app.db
     depends_on:
-      - redis
-    volumes:
-      - ./api:/app
-      - api_data:/app/data
+      redis:
+        condition: service_healthy
     networks:
       - crawler-network
     restart: unless-stopped
+    volumes:
+      - api-data:/app/data
+      - ./api:/app:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Service Worker xử lý crawling với Celery
   worker:
@@ -41,41 +51,47 @@ services:
     container_name: crawler-worker
     environment:
       - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=${DATABASE_URL:-sqlite:///./app.db}
+      - DATABASE_URL=sqlite:///app/app.db
     depends_on:
-      - redis
-      - api
-    volumes:
-      - ./worker:/app
-      - worker_data:/app/data
+      redis:
+        condition: service_healthy
     networks:
       - crawler-network
     restart: unless-stopped
+    volumes:
+      - worker-data:/app/data
+      - ./worker:/app:ro
+    deploy:
+      replicas: 2
+    healthcheck:
+      test: ["CMD", "python", "-c", "import celery; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Service Web frontend với Next.js
-  web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    container_name: crawler-web
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-    depends_on:
-      - api
-    volumes:
-      - ./web:/app
-      - /app/node_modules
-    networks:
-      - crawler-network
-    restart: unless-stopped
-
-volumes:
-  redis_data:
-  api_data:
-  worker_data:
+  # web:  # Disabled due to Next.js build issues
+  #   build:
+  #     context: ./web
+  #     dockerfile: Dockerfile
+  #   container_name: crawler-web
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - api
+  #   networks:
+  #     - crawler-network
+  #   restart: unless-stopped
 
 networks:
   crawler-network:
     driver: bridge
+    name: crawler-network
+
+volumes:
+  redis-data:
+    name: crawler-redis-data
+  api-data:
+    name: crawler-api-data
+  worker-data:
+    name: crawler-worker-data

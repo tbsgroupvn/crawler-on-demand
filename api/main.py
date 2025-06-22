@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, HttpUrl
 from typing import List, Optional, Dict, Any
 import uuid
@@ -11,6 +12,10 @@ from celery import Celery
 import databases
 import sqlalchemy
 from sqlalchemy import create_engine, MetaData, Table, Column, String, DateTime, Text
+import re
+from collections import Counter
+from datetime import datetime, timedelta
+import asyncio
 
 # Database setup  
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
@@ -444,6 +449,314 @@ async def get_system_stats():
         stats['tasks_last_24h'] = 0
     
     return stats
+
+@app.get("/analytics/{task_id}")
+async def get_task_analytics(task_id: str):
+    """Phân tích nội dung chi tiết của task"""
+    try:
+        task = database.get_task(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        if not task.get('data'):
+            return {"error": "No data to analyze"}
+        
+        analytics = analyze_content(task['data'])
+        return {
+            "task_id": task_id,
+            "status": task['status'],
+            "analytics": analytics,
+            "generated_at": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/compare")
+async def compare_websites(urls: str):
+    """So sánh nội dung giữa nhiều websites"""
+    try:
+        url_list = [url.strip() for url in urls.split(',')]
+        if len(url_list) < 2:
+            raise HTTPException(status_code=400, detail="Need at least 2 URLs to compare")
+        
+        comparison = {}
+        for url in url_list:
+            # Tìm task mới nhất cho URL này
+            tasks = database.get_all_tasks()
+            latest_task = None
+            for task in tasks:
+                if task.get('url') == url and task.get('status') == 'completed':
+                    if not latest_task or task.get('created_at', '') > latest_task.get('created_at', ''):
+                        latest_task = task
+            
+            if latest_task and latest_task.get('data'):
+                comparison[url] = analyze_content(latest_task['data'])
+            else:
+                comparison[url] = {"error": "No data found for this URL"}
+        
+        return {
+            "comparison": comparison,
+            "summary": generate_comparison_summary(comparison)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/search")
+async def search_content(request: dict):
+    """Tìm kiếm trong dữ liệu đã crawl"""
+    try:
+        keyword = request.get('keyword', '').lower()
+        search_type = request.get('type', 'all')  # all, title, content, links
+        
+        if not keyword:
+            raise HTTPException(status_code=400, detail="Keyword is required")
+        
+        tasks = database.get_all_tasks()
+        results = []
+        
+        for task in tasks:
+            if task.get('status') != 'completed' or not task.get('data'):
+                continue
+                
+            matches = search_in_task(task, keyword, search_type)
+            if matches:
+                results.append({
+                    "task_id": task['id'],
+                    "url": task.get('url'),
+                    "crawled_at": task.get('created_at'),
+                    "matches": matches
+                })
+        
+        return {
+            "keyword": keyword,
+            "search_type": search_type,
+            "total_results": len(results),
+            "results": results[:50]  # Limit to 50 results
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/export/json/{task_id}")
+async def export_json(task_id: str):
+    """Xuất dữ liệu dạng JSON"""
+    try:
+        task = database.get_task(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        export_data = {
+            "task_info": {
+                "id": task_id,
+                "url": task.get('url'),
+                "status": task.get('status'),
+                "created_at": task.get('created_at'),
+                "completed_at": task.get('completed_at')
+            },
+            "crawl_data": task.get('data', []),
+            "analytics": analyze_content(task.get('data', [])) if task.get('data') else None,
+            "export_info": {
+                "exported_at": datetime.now().isoformat(),
+                "format": "json",
+                "version": "1.0"
+            }
+        }
+        
+        return Response(
+            content=json.dumps(export_data, indent=2, ensure_ascii=False),
+            media_type="application/json",
+            headers={"Content-Disposition": f"attachment; filename=crawl_data_{task_id}.json"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/dashboard/advanced")
+async def get_advanced_dashboard():
+    """Dashboard nâng cao với thống kê chi tiết"""
+    try:
+        tasks = database.get_all_tasks()
+        
+        # Thống kê theo thời gian
+        time_stats = {}
+        domain_stats = {}
+        status_stats = {"pending": 0, "running": 0, "completed": 0, "failed": 0}
+        content_stats = {"total_pages": 0, "total_content_size": 0, "avg_content_size": 0}
+        
+        for task in tasks:
+            # Thống kê trạng thái
+            status = task.get('status', 'unknown')
+            status_stats[status] = status_stats.get(status, 0) + 1
+            
+            # Thống kê theo domain
+            url = task.get('url', '')
+            if url:
+                try:
+                    from urllib.parse import urlparse
+                    domain = urlparse(url).netloc
+                    domain_stats[domain] = domain_stats.get(domain, 0) + 1
+                except:
+                    pass
+            
+            # Thống kê nội dung
+            data = task.get('data', [])
+            if data:
+                content_stats["total_pages"] += len(data)
+                for page in data:
+                    size = page.get('content_size', 0)
+                    if isinstance(size, (int, float)):
+                        content_stats["total_content_size"] += size
+            
+            # Thống kê theo thời gian
+            created_at = task.get('created_at', '')
+            if created_at:
+                try:
+                    date_key = created_at[:10]  # YYYY-MM-DD
+                    time_stats[date_key] = time_stats.get(date_key, 0) + 1
+                except:
+                    pass
+        
+        # Tính trung bình
+        if content_stats["total_pages"] > 0:
+            content_stats["avg_content_size"] = content_stats["total_content_size"] / content_stats["total_pages"]
+        
+        # Top domains
+        top_domains = sorted(domain_stats.items(), key=lambda x: x[1], reverse=True)[:10]
+        
+        return {
+            "summary": {
+                "total_tasks": len(tasks),
+                "status_breakdown": status_stats,
+                "content_stats": content_stats
+            },
+            "time_series": dict(sorted(time_stats.items())),
+            "top_domains": top_domains,
+            "generated_at": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Helper functions
+def analyze_content(data: list) -> Dict[str, Any]:
+    """Phân tích nội dung crawl"""
+    if not data:
+        return {}
+    
+    analysis = {
+        "total_pages": len(data),
+        "total_content_size": 0,
+        "avg_content_size": 0,
+        "word_count": {"total": 0, "avg_per_page": 0},
+        "top_keywords": [],
+        "links_analysis": {"total_links": 0, "internal_links": 0, "external_links": 0},
+        "content_types": {"with_images": 0, "with_links": 0, "with_headings": 0}
+    }
+    
+    all_text = ""
+    total_links = 0
+    
+    for page in data:
+        # Content size
+        size = page.get('content_size', 0)
+        if isinstance(size, (int, float)):
+            analysis["total_content_size"] += size
+        
+        # Text analysis
+        title = page.get('title', '')
+        description = page.get('description', '')
+        paragraphs = ' '.join(page.get('paragraphs', []))
+        headings = ' '.join(page.get('headings', []))
+        
+        page_text = f"{title} {description} {paragraphs} {headings}"
+        all_text += f" {page_text}"
+        
+        # Links analysis
+        links = page.get('links', [])
+        total_links += len(links)
+        
+        # Content types
+        if page.get('images'):
+            analysis["content_types"]["with_images"] += 1
+        if links:
+            analysis["content_types"]["with_links"] += 1
+        if page.get('headings'):
+            analysis["content_types"]["with_headings"] += 1
+    
+    # Calculate averages
+    if analysis["total_pages"] > 0:
+        analysis["avg_content_size"] = analysis["total_content_size"] / analysis["total_pages"]
+    
+    # Word analysis
+    words = re.findall(r'\b\w+\b', all_text.lower())
+    analysis["word_count"]["total"] = len(words)
+    if analysis["total_pages"] > 0:
+        analysis["word_count"]["avg_per_page"] = len(words) / analysis["total_pages"]
+    
+    # Top keywords (excluding common words)
+    stop_words = {'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'a', 'an'}
+    filtered_words = [word for word in words if len(word) > 3 and word not in stop_words]
+    word_freq = Counter(filtered_words)
+    analysis["top_keywords"] = word_freq.most_common(20)
+    
+    # Links analysis
+    analysis["links_analysis"]["total_links"] = total_links
+    
+    return analysis
+
+def generate_comparison_summary(comparison: Dict) -> Dict:
+    """Tạo tóm tắt so sánh"""
+    urls = list(comparison.keys())
+    summary = {
+        "compared_sites": len(urls),
+        "metrics": {}
+    }
+    
+    for metric in ["total_pages", "total_content_size", "word_count"]:
+        values = []
+        for url in urls:
+            data = comparison[url]
+            if isinstance(data, dict) and metric in data:
+                if metric == "word_count":
+                    values.append(data[metric].get("total", 0))
+                else:
+                    values.append(data[metric])
+        
+        if values:
+            summary["metrics"][metric] = {
+                "highest": max(values),
+                "lowest": min(values),
+                "average": sum(values) / len(values)
+            }
+    
+    return summary
+
+def search_in_task(task: dict, keyword: str, search_type: str) -> list:
+    """Tìm kiếm trong task"""
+    matches = []
+    data = task.get('data', [])
+    
+    for page in data:
+        page_matches = {"url": page.get('url'), "matches": []}
+        
+        if search_type in ['all', 'title']:
+            title = page.get('title', '').lower()
+            if keyword in title:
+                page_matches["matches"].append({"type": "title", "content": page.get('title', '')})
+        
+        if search_type in ['all', 'content']:
+            paragraphs = page.get('paragraphs', [])
+            for i, para in enumerate(paragraphs):
+                if keyword in para.lower():
+                    page_matches["matches"].append({"type": "paragraph", "content": para[:200] + "..."})
+        
+        if search_type in ['all', 'links']:
+            links = page.get('links', [])
+            for link in links:
+                if keyword in link.lower():
+                    page_matches["matches"].append({"type": "link", "content": link})
+        
+        if page_matches["matches"]:
+            matches.append(page_matches)
+    
+    return matches
 
 if __name__ == "__main__":
     import uvicorn
