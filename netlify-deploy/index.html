@@ -523,7 +523,7 @@
                     </div>
                 </div>
 
-                <div style="padding: 1rem; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 0.5rem;">
+                <div style="padding: 1rem; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 0.5rem; margin-bottom: 1rem;">
                     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
                         <span style="font-size: 1.25rem;">✅</span>
                         <span style="font-weight: 600; color: #0c4a6e;">Sẵn sàng sử dụng</span>
@@ -531,6 +531,19 @@
                     <p style="font-size: 0.875rem; color: #075985; margin: 0;">
                         Hệ thống đã được cấu hình với API backend, worker xử lý và khả năng xuất dữ liệu.
                     </p>
+                </div>
+
+                <div style="padding: 1rem; background: #fffbeb; border: 1px solid #fed7aa; border-radius: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <span style="font-size: 1.25rem;">💡</span>
+                        <span style="font-weight: 600; color: #92400e;">Xử lý lỗi HTTP 408</span>
+                    </div>
+                    <ul style="font-size: 0.75rem; color: #b45309; margin: 0; padding-left: 1rem;">
+                        <li>Timeout 15 giây với tự động retry 2 lần</li>
+                        <li>Delay tăng dần giữa các lần thử</li>
+                        <li>Kiểm tra truy cập trước khi crawl</li>
+                        <li>Thông báo lỗi chi tiết bằng tiếng Việt</li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -685,10 +698,16 @@
                 addCrawlTask(url, taskType, currentTaskId);
                 updateStats();
                 
+                // Test website access first
+                const canAccess = await testWebsiteAccess(url);
+                if (!canAccess) {
+                    throw new Error('Không thể truy cập website');
+                }
+                
                 showToast(`Bắt đầu thu thập: ${url}`, 'info');
                 
                 // Simulate processing delay
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 500));
                 
                 // Update task status to running
                 updateTaskStatus(currentTaskId, 'running');
@@ -938,6 +957,41 @@
             showToast(`Xuất ${formats[format]} hoàn thành`, 'success');
         }
 
+        // Test website accessibility before crawling
+        async function testWebsiteAccess(url) {
+            try {
+                showToast(`🔍 Đang kiểm tra khả năng truy cập: ${url}`, 'info');
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // Quick 5s test
+                
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+                const response = await fetch(proxyUrl, {
+                    signal: controller.signal,
+                    method: 'HEAD' // Only get headers
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (response.ok) {
+                    showToast(`✅ Website truy cập được, bắt đầu thu thập...`, 'success');
+                    return true;
+                } else if (response.status === 408) {
+                    showToast(`⚠️ Website phản hồi chậm, sẽ thử với thời gian chờ lâu hơn...`, 'warning');
+                    return true; // Still try to crawl but with longer timeout
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    showToast(`⏱️ Website phản hồi quá chậm, vẫn sẽ thử crawl...`, 'warning');
+                    return true; // Still attempt crawling
+                }
+                showToast(`❌ Không thể truy cập website: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
         // Real crawling implementation
         async function performRealCrawl(startUrl, maxDepth, maxPages) {
             const results = [];
@@ -951,7 +1005,30 @@
                 visited.add(url);
                 
                 try {
-                    const pageData = await crawlSinglePage(url);
+                    // Retry logic for timeout errors
+                    let pageData = null;
+                    let lastError = null;
+                    const maxRetries = 2;
+                    
+                    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                        try {
+                            pageData = await crawlSinglePage(url);
+                            break; // Success, exit retry loop
+                        } catch (error) {
+                            lastError = error;
+                            
+                            // Only retry for timeout/network errors
+                            if (error.message.includes('Timeout') || error.message.includes('Lỗi mạng')) {
+                                if (attempt < maxRetries) {
+                                    console.log(`Retry ${attempt}/${maxRetries} for ${url}: ${error.message}`);
+                                    await new Promise(resolve => setTimeout(resolve, 2000 * attempt)); // Progressive delay
+                                    continue;
+                                }
+                            }
+                            throw error; // Don't retry for other errors
+                        }
+                    }
+                    
                     if (pageData) {
                         results.push(pageData);
                         
@@ -966,14 +1043,14 @@
                     }
                     
                     // Respectful delay
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await new Promise(resolve => setTimeout(resolve, 1500));
                     
                 } catch (error) {
                     console.error(`Failed to crawl ${url}:`, error);
                     results.push({
                         url: url,
                         title: 'Lỗi',
-                        description: `Không thể thu thập: ${error.message}`,
+                        description: `${error.message}`,
                         status: 'error',
                         crawledAt: new Date().toISOString()
                     });
@@ -986,10 +1063,34 @@
         async function crawlSinglePage(url) {
             try {
                 const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-                const response = await fetch(proxyUrl);
+                
+                // Add timeout and retry logic
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+                
+                const response = await fetch(proxyUrl, {
+                    signal: controller.signal,
+                    headers: {
+                        'Accept': 'application/json',
+                        'User-Agent': 'Mozilla/5.0 (compatible; WebCrawler/1.0)'
+                    }
+                });
+                
+                clearTimeout(timeoutId);
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                    // Handle specific HTTP errors
+                    if (response.status === 408) {
+                        throw new Error(`Timeout - Website phản hồi quá chậm (${response.status})`);
+                    } else if (response.status === 403) {
+                        throw new Error(`Bị chặn - Website không cho phép truy cập (${response.status})`);
+                    } else if (response.status === 404) {
+                        throw new Error(`Không tìm thấy trang (${response.status})`);
+                    } else if (response.status >= 500) {
+                        throw new Error(`Lỗi server - Website gặp sự cố (${response.status})`);
+                    } else {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
                 }
                 
                 const data = await response.json();
@@ -1041,6 +1142,14 @@
                 };
                 
             } catch (error) {
+                // Handle AbortError (timeout)
+                if (error.name === 'AbortError') {
+                    throw new Error('Timeout - Kết nối bị ngắt do quá chậm');
+                }
+                // Handle network errors
+                if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+                    throw new Error('Lỗi mạng - Không thể kết nối tới website');
+                }
                 throw error;
             }
         }
