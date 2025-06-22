@@ -1074,9 +1074,22 @@
         }
 
         async function crawlSinglePage(url) {
+            // Special handling for Vietnamese news sites
+            if (url.includes('dantri.com.vn')) {
+                return await crawlVietnameseNewsSite(url, 'dantri');
+            }
+            if (url.includes('vnexpress.net')) {
+                return await crawlVietnameseNewsSite(url, 'vnexpress');
+            }
+            if (url.includes('thanhnien.vn')) {
+                return await crawlVietnameseNewsSite(url, 'thanhnien');
+            }
+            
             // Multiple CORS proxies for better success rate
             const corsProxies = [
                 `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+                `https://cors-proxy.htmldriven.com/?url=${encodeURIComponent(url)}`,
                 `https://corsproxy.io/?${encodeURIComponent(url)}`,
                 `https://cors-anywhere.herokuapp.com/${url}`,
                 `https://thingproxy.freeboard.io/fetch/${url}`
@@ -1174,6 +1187,262 @@
                     throw new Error('Lỗi mạng - Website có thể chặn truy cập từ proxy');
                 }
                 throw lastError;
+            }
+        }
+        
+        // Special crawler for Vietnamese news sites with anti-bot protection
+        async function crawlVietnameseNewsSite(url, siteType) {
+            console.log(`🇻🇳 Using Vietnamese news crawler for ${siteType}: ${url}`);
+            
+            // Advanced proxies with different approaches
+            const advancedProxies = [
+                // JSON-based proxies
+                {
+                    url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+                    type: 'json',
+                    field: 'contents'
+                },
+                {
+                    url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+                    type: 'text',
+                    field: null
+                },
+                // Simple text proxies
+                {
+                    url: `https://cors-proxy.htmldriven.com/?url=${encodeURIComponent(url)}`,
+                    type: 'text',
+                    field: null
+                },
+                // Google Translate as proxy (sneaky method)
+                {
+                    url: `https://translate.google.com/translate?sl=vi&tl=en&u=${encodeURIComponent(url)}`,
+                    type: 'translate',
+                    field: null
+                },
+                // Archive.org as proxy
+                {
+                    url: `https://web.archive.org/web/20240101000000/${url}`,
+                    type: 'archive',
+                    field: null
+                }
+            ];
+            
+            const vietnameseUserAgents = [
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edge/120.0.0.0',
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
+                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            ];
+            
+            let lastError = null;
+            
+            // Try each advanced proxy method
+            for (let i = 0; i < advancedProxies.length; i++) {
+                const proxy = advancedProxies[i];
+                const userAgent = vietnameseUserAgents[i % vietnameseUserAgents.length];
+                
+                try {
+                    console.log(`Trying Vietnamese method ${i + 1}/${advancedProxies.length}: ${proxy.type}`);
+                    
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s for VN sites
+                    
+                    // Special delay for suspicious behavior
+                    if (i > 0) {
+                        await new Promise(resolve => setTimeout(resolve, 3000 + Math.random() * 2000));
+                    }
+                    
+                    const response = await fetch(proxy.url, {
+                        signal: controller.signal,
+                        headers: {
+                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                            'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
+                            'Accept-Encoding': 'gzip, deflate, br',
+                            'User-Agent': userAgent,
+                            'Referer': 'https://www.google.com.vn/',
+                            'Origin': 'https://www.google.com.vn',
+                            'DNT': '1',
+                            'Connection': 'keep-alive',
+                            'Upgrade-Insecure-Requests': '1',
+                            'Sec-Fetch-Site': 'cross-site',
+                            'Sec-Fetch-Mode': 'navigate',
+                            'Sec-Fetch-User': '?1',
+                            'Sec-Fetch-Dest': 'document',
+                            'Cache-Control': 'max-age=0',
+                            'X-Forwarded-For': '14.161.35.222', // VN IP range
+                            'CF-IPCountry': 'VN'
+                        }
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+                    }
+                    
+                    // Get content based on proxy type
+                    let htmlContent;
+                    try {
+                        if (proxy.type === 'json') {
+                            const data = await response.json();
+                            htmlContent = data[proxy.field] || data.contents || data.data;
+                        } else if (proxy.type === 'translate') {
+                            const text = await response.text();
+                            // Extract content from Google Translate page
+                            const match = text.match(/<div[^>]*class="t0"[^>]*>(.*?)<\/div>/s);
+                            htmlContent = match ? match[1] : text;
+                        } else if (proxy.type === 'archive') {
+                            htmlContent = await response.text();
+                            // Clean archive.org wrapper
+                            htmlContent = htmlContent.replace(/<!-- BEGIN WAYBACK TOOLBAR INSERT -->.*?<!-- END WAYBACK TOOLBAR INSERT -->/gs, '');
+                        } else {
+                            htmlContent = await response.text();
+                        }
+                    } catch (parseError) {
+                        console.log(`Parse error for method ${proxy.type}:`, parseError.message);
+                        continue;
+                    }
+                    
+                    // Validate content
+                    if (!htmlContent || htmlContent.length < 200) {
+                        throw new Error(`Nội dung quá ngắn (${htmlContent?.length || 0} ký tự)`);
+                    }
+                    
+                    // Check if content contains Vietnamese characters
+                    if (siteType !== 'archive' && !/[àáạảãăắằẳẵặâấầẩẫậêéẹẻẽếềểễệôốồổỗộơớờởỡợưứừửữựị]/i.test(htmlContent)) {
+                        throw new Error('Không phát hiện nội dung tiếng Việt');
+                    }
+                    
+                    console.log(`✅ Success with method ${proxy.type}: ${htmlContent.length} characters`);
+                    
+                    // Parse and return successful result
+                    return await parseVietnameseContent(htmlContent, url, siteType);
+                    
+                } catch (error) {
+                    lastError = error;
+                    console.log(`❌ Method ${proxy.type} failed: ${error.message}`);
+                    
+                    // Continue to next method
+                    continue;
+                }
+            }
+            
+            // If all methods failed, return error with helpful info
+            const errorMsg = lastError ? lastError.message : 'Tất cả phương thức đều thất bại';
+            throw new Error(`Website có bảo vệ mạnh - ${errorMsg}. Hãy thử website khác như VnExpress.net`);
+        }
+        
+        // Parse Vietnamese news content with optimizations
+        async function parseVietnameseContent(htmlContent, url, siteType) {
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlContent, 'text/html');
+                
+                // Remove unwanted elements
+                const unwantedSelectors = [
+                    'script', 'style', 'nav', 'header', 'footer', 
+                    '.advertisement', '.ads', '.social-share',
+                    '.comment', '.sidebar', '.related-news'
+                ];
+                unwantedSelectors.forEach(selector => {
+                    doc.querySelectorAll(selector).forEach(el => el.remove());
+                });
+                
+                // Extract title with fallbacks
+                let title = '';
+                const titleSelectors = [
+                    'h1.title', 'h1.article-title', '.article-title h1',
+                    'h1', 'title', '.title', '.headline'
+                ];
+                for (const selector of titleSelectors) {
+                    const titleEl = doc.querySelector(selector);
+                    if (titleEl && titleEl.textContent.trim()) {
+                        title = titleEl.textContent.trim();
+                        break;
+                    }
+                }
+                
+                // Extract description with fallbacks
+                let description = '';
+                const descSelectors = [
+                    'meta[name="description"]', 'meta[property="og:description"]',
+                    '.article-lead', '.sapo', '.summary', '.excerpt'
+                ];
+                for (const selector of descSelectors) {
+                    const descEl = doc.querySelector(selector);
+                    if (descEl) {
+                        description = descEl.getAttribute('content') || descEl.textContent.trim();
+                        if (description) break;
+                    }
+                }
+                
+                // Extract content paragraphs
+                const contentSelectors = [
+                    '.article-content p', '.content p', '.body p',
+                    '.article-body p', '.post-content p', 'article p', 'p'
+                ];
+                let paragraphs = [];
+                for (const selector of contentSelectors) {
+                    paragraphs = Array.from(doc.querySelectorAll(selector))
+                        .map(p => p.textContent.trim())
+                        .filter(text => text.length > 50 && !/^(Ảnh|Nguồn|Tags|Theo)/i.test(text))
+                        .slice(0, 10);
+                    if (paragraphs.length > 2) break;
+                }
+                
+                // Extract headings
+                const headings = Array.from(doc.querySelectorAll('h1, h2, h3, h4, h5, h6'))
+                    .map(h => h.textContent.trim())
+                    .filter(text => text.length > 3 && text.length < 200)
+                    .slice(0, 15);
+                
+                // Extract links
+                const links = Array.from(doc.querySelectorAll('a[href]'))
+                    .map(a => {
+                        const href = a.getAttribute('href');
+                        return normalizeUrl(href, url);
+                    })
+                    .filter(link => link && isValidUrl(link) && !link.includes('javascript:'))
+                    .slice(0, 30);
+                
+                // Extract images
+                const images = Array.from(doc.querySelectorAll('img[src]'))
+                    .map(img => ({
+                        src: normalizeUrl(img.getAttribute('src'), url),
+                        alt: img.getAttribute('alt') || img.getAttribute('title') || ''
+                    }))
+                    .filter(img => img.src && !img.src.includes('data:image'))
+                    .slice(0, 15);
+                
+                // Calculate metrics
+                const fullText = [title, description, ...paragraphs, ...headings].join(' ');
+                const vietnameseWords = fullText.split(/\s+/).filter(word => 
+                    word.length > 1 && /[àáạảãăắằẳẵặâấầẩẫậêéẹẻẽếềểễệôốồổỗộơớờởỡợưứừửữựịa-zA-Z]/.test(word)
+                );
+                
+                return {
+                    url: url,
+                    title: title || 'Không có tiêu đề',
+                    description: description || 'Không có mô tả',
+                    headings: headings,
+                    paragraphs: paragraphs,
+                    links: links,
+                    images: images,
+                    metrics: {
+                        wordCount: vietnameseWords.length,
+                        characterCount: fullText.length,
+                        headingCount: headings.length,
+                        linkCount: links.length,
+                        imageCount: images.length,
+                        paragraphCount: paragraphs.length
+                    },
+                    crawledAt: new Date().toISOString(),
+                    status: 'success',
+                    crawlMethod: 'vietnamese-optimized',
+                    siteType: siteType
+                };
+                
+            } catch (error) {
+                throw new Error(`Lỗi phân tích website Việt Nam: ${error.message}`);
             }
         }
         
