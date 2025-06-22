@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Netlify Debug Helper</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background: #f8f9fa; 
+            line-height: 1.6;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .success { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+        .info { color: #17a2b8; font-weight: bold; }
+        .section {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        .code {
+            background: #343a40;
+            color: #28a745;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover { background: #0056b3; }
+        .checklist {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .checklist li {
+            margin: 8px 0;
+            list-style-type: none;
+        }
+        .checklist li:before {
+            content: '□ ';
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .checklist li.checked:before {
+            content: '✅ ';
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Netlify Deployment Debug Helper</h1>
+        <div class="info">🎯 This page helps diagnose Netlify deployment issues for Crawler On Demand</div>
+        
+        <div class="section">
+            <h2>📋 Quick Status Check</h2>
+            <div id="status-results">
+                <div class="success">✅ This debug page is loading correctly!</div>
+                <div id="live-info">
+                    <p><strong>Current URL:</strong> <span id="current-url" class="info"></span></p>
+                    <p><strong>Host:</strong> <span id="current-host" class="info"></span></p>
+                    <p><strong>Protocol:</strong> <span id="current-protocol" class="info"></span></p>
+                    <p><strong>Timestamp:</strong> <span id="current-time" class="info"></span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🧪 File Access Tests</h2>
+            <div id="file-tests">
+                <button class="button" onclick="testFile('/')">Test Root /</button>
+                <button class="button" onclick="testFile('/index.html')">Test /index.html</button>
+                <button class="button" onclick="testFile('/simple.html')">Test /simple.html</button>
+                <button class="button" onclick="testFile('/hello.html')">Test /hello.html</button>
+                <button class="button" onclick="testFile('/test.html')">Test /test.html</button>
+            </div>
+            <div id="test-results" class="checklist"></div>
+        </div>
+
+        <div class="section">
+            <h2>📝 Deployment Checklist</h2>
+            <div class="checklist">
+                <ul id="deployment-checklist">
+                    <li>Files uploaded to Netlify (drag & drop netlify-deploy folder)</li>
+                    <li>Site deployed successfully (check Netlify dashboard)</li>
+                    <li>Custom domain configured (if applicable)</li>
+                    <li>_redirects file present and configured</li>
+                    <li>netlify.toml file present and configured</li>
+                    <li>HTML files are valid (no syntax errors)</li>
+                    <li>No missing dependencies or resources</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🚨 Common Issues & Solutions</h2>
+            
+            <h3>1. 404 Error on Root Path</h3>
+            <div class="warning">Problem:</div> Site loads but shows 404 error
+            <div class="checklist">
+                <ul>
+                    <li>Check if index.html exists in root folder</li>
+                    <li>Verify _redirects file has: <code>/ /index.html 200</code></li>
+                    <li>Clear browser cache and try again</li>
+                    <li>Check Netlify deploy log for errors</li>
+                </ul>
+            </div>
+
+            <h3>2. Files Not Found</h3>
+            <div class="warning">Problem:</div> Specific pages show 404
+            <div class="checklist">
+                <ul>
+                    <li>Verify file names match exactly (case sensitive)</li>
+                    <li>Check file extensions (.html vs .htm)</li>
+                    <li>Ensure files are in netlify-deploy folder when uploading</li>
+                </ul>
+            </div>
+
+            <h3>3. Deployment Failed</h3>
+            <div class="warning">Problem:</div> Netlify shows deployment errors
+            <div class="checklist">
+                <ul>
+                    <li>Check Netlify deploy logs for specific errors</li>
+                    <li>Verify netlify.toml syntax is correct</li>
+                    <li>Try manual drag & drop deployment</li>
+                    <li>Remove problematic files and redeploy</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🛠️ Manual Debug Steps</h2>
+            
+            <h3>Step 1: Test Local Files</h3>
+            <div class="code">
+                # In netlify-deploy folder:<br>
+                python -m http.server 3000<br>
+                # Then open: http://localhost:3000
+            </div>
+
+            <h3>Step 2: Verify File Structure</h3>
+            <div class="code">
+                netlify-deploy/<br>
+                ├── index.html     (83KB - main demo)<br>
+                ├── simple.html    (2.3KB - simple test)<br>
+                ├── test.html      (1.7KB - test page)<br>
+                ├── hello.html     (minimal test)<br>
+                ├── debug.html     (this file)<br>
+                ├── _redirects     (routing rules)<br>
+                ├── netlify.toml   (config)<br>
+                └── README.md      (documentation)
+            </div>
+
+            <h3>Step 3: Re-deploy Process</h3>
+            <div class="checklist">
+                <ol style="list-style-type: decimal; margin-left: 20px;">
+                    <li>Go to Netlify dashboard</li>
+                    <li>Click "Deploy" or "Deploys" tab</li>
+                    <li>Drag netlify-deploy folder to deploy area</li>
+                    <li>Wait for deployment to complete</li>
+                    <li>Click on site URL to test</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔗 Quick Links</h2>
+            <button class="button" onclick="window.open('https://app.netlify.com', '_blank')">🌐 Netlify Dashboard</button>
+            <button class="button" onclick="window.open('https://github.com/tbsgroupvn/crawler-on-demand', '_blank')">📂 GitHub Repo</button>
+            <button class="button" onclick="location.href='/index.html'">🏠 Main Demo</button>
+            <button class="button" onclick="location.href='/simple.html'">🧪 Simple Test</button>
+            <button class="button" onclick="location.href='/hello.html'">👋 Hello Test</button>
+        </div>
+
+        <div class="section">
+            <h2>📞 Support Information</h2>
+            <div class="info">
+                <p><strong>Repository:</strong> <a href="https://github.com/tbsgroupvn/crawler-on-demand">crawler-on-demand</a></p>
+                <p><strong>This Debug Page:</strong> /debug.html</p>
+                <p><strong>Test Pages:</strong> /simple.html, /hello.html, /test.html</p>
+                <p><strong>Main Demo:</strong> /index.html or /</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Update live information
+        function updateInfo() {
+            document.getElementById('current-url').textContent = window.location.href;
+            document.getElementById('current-host').textContent = window.location.hostname;
+            document.getElementById('current-protocol').textContent = window.location.protocol;
+            document.getElementById('current-time').textContent = new Date().toLocaleString();
+        }
+
+        // Test file access
+        function testFile(path) {
+            const fullUrl = window.location.origin + path;
+            const resultDiv = document.getElementById('test-results');
+            
+            // Add loading indicator
+            const loadingId = 'loading-' + Date.now();
+            resultDiv.innerHTML += `<div id="${loadingId}" class="info">🔄 Testing ${path}...</div>`;
+            
+            fetch(fullUrl, { method: 'HEAD' })
+                .then(response => {
+                    document.getElementById(loadingId).remove();
+                    if (response.ok) {
+                        resultDiv.innerHTML += `<div class="success">✅ ${path} - OK (${response.status})</div>`;
+                    } else {
+                        resultDiv.innerHTML += `<div class="error">❌ ${path} - Error ${response.status}</div>`;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById(loadingId).remove();
+                    resultDiv.innerHTML += `<div class="error">❌ ${path} - Network Error: ${error.message}</div>`;
+                });
+        }
+
+        // Auto-test on load
+        function runAutoTests() {
+            console.log('🔧 Debug page loaded successfully');
+            updateInfo();
+            
+            // Auto-test critical paths
+            setTimeout(() => {
+                testFile('/');
+                testFile('/index.html');
+            }, 1000);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', runAutoTests);
+        
+        // Refresh info every 30 seconds
+        setInterval(updateInfo, 30000);
+    </script>
+</body>
+</html> 

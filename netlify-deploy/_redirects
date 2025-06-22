@@ -1,16 +1,90 @@
-# Netlify redirects for Crawler On Demand Demo
+# Netlify redirects for Crawler On Demand - Enhanced Configuration
 
-# Root redirect (most important)
-/                 /index.html     200
+# API Demo redirects (simulate backend responses)
+/api/health          /debug.html?endpoint=health       200
+/api/crawl           /debug.html?endpoint=crawl        200
+/api/tasks           /debug.html?endpoint=tasks        200
+/api/tasks/*         /debug.html?endpoint=task-detail  200
+/api/export/*        /debug.html?endpoint=export       200
+/api/search          /debug.html?endpoint=search       200
+/api/analytics/*     /debug.html?endpoint=analytics    200
+/api/compare         /debug.html?endpoint=compare      200
+/api/stats           /debug.html?endpoint=stats        200
 
-# Test pages
-/simple           /simple.html    200
-/test             /test.html      200
+# Page redirects with clean URLs
+/crawler             /index.html                       200
+/demo                /index.html                       200
+/dashboard           /index.html                       200
+/interface           /index.html                       200
 
-# SPA behavior for all other routes
-/*                /index.html     200
+# Feature-specific pages
+/simple              /simple.html                      200
+/test                /test.html                        200
+/hello               /hello.html                       200
+/debug               /debug.html                       200
+/troubleshoot        /TROUBLESHOOTING.md               200
+
+# Legacy support
+/crawler.html        /index.html                       301
+/crawler_demo.html   /index.html                       301
+/crawler_interface.html /index.html                    301
+
+# Tool shortcuts
+/health              /debug.html?tool=health           200
+/status              /debug.html?tool=status           200
+/docs                /debug.html?tool=docs             200
 
 # External redirects
-/github           https://github.com/tbsgroupvn/crawler-on-demand   302
-/deploy           https://github.com/tbsgroupvn/crawler-on-demand#-quick-start   302
-/docs             https://github.com/tbsgroupvn/crawler-on-demand#-api-endpoints   302 
+/github              https://github.com/tbsgroupvn/crawler-on-demand           302
+/repo                https://github.com/tbsgroupvn/crawler-on-demand           302
+/source              https://github.com/tbsgroupvn/crawler-on-demand           302
+/deploy              https://github.com/tbsgroupvn/crawler-on-demand#quick-start 302
+/setup               https://github.com/tbsgroupvn/crawler-on-demand#installation 302
+/documentation       https://github.com/tbsgroupvn/crawler-on-demand#api-endpoints 302
+/api-docs            https://github.com/tbsgroupvn/crawler-on-demand#api-endpoints 302
+/examples            https://github.com/tbsgroupvn/crawler-on-demand#usage-examples 302
+
+# Docker and deployment guides
+/docker              https://github.com/tbsgroupvn/crawler-on-demand#docker-deployment 302
+/kubernetes          https://github.com/tbsgroupvn/crawler-on-demand#kubernetes-deployment 302
+/compose             https://github.com/tbsgroupvn/crawler-on-demand#docker-compose 302
+
+# Social media and contact
+/contact             https://github.com/tbsgroupvn/crawler-on-demand/issues     302
+/issues              https://github.com/tbsgroupvn/crawler-on-demand/issues     302
+/bugs                https://github.com/tbsgroupvn/crawler-on-demand/issues     302
+/feature-request     https://github.com/tbsgroupvn/crawler-on-demand/issues/new 302
+
+# Performance and monitoring URLs
+/metrics             /debug.html?section=metrics       200
+/performance         /debug.html?section=performance   200
+/monitoring          /debug.html?section=monitoring    200
+
+# Downloadable resources (redirect to GitHub releases)
+/download            https://github.com/tbsgroupvn/crawler-on-demand/releases   302
+/latest              https://github.com/tbsgroupvn/crawler-on-demand/releases/latest 302
+
+# Version-specific redirects
+/v1/*                /index.html                       200
+/v2/*                /index.html                       200
+/beta/*              /index.html                       200
+
+# Special redirects for crawled content simulation
+/sample-data         /debug.html?data=sample           200
+/test-data           /debug.html?data=test             200
+/mock-api            /debug.html?mode=api              200
+
+# Admin and configuration pages (redirect to debug)
+/admin               /debug.html?admin=true            200
+/config              /debug.html?config=true           200
+/settings            /debug.html?settings=true         200
+
+# Webhook endpoints (for future integrations)
+/webhook/*           /debug.html?webhook=true          200
+/callback/*          /debug.html?callback=true         200
+
+# Root redirect (must be last and most specific)
+/                    /index.html                       200
+
+# Catch-all SPA behavior (must be absolute last)
+/*                   /index.html                       200 
