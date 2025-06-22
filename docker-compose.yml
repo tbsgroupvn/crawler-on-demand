@@ -1,0 +1,81 @@
+﻿version: '3.8'
+
+services:
+  # Service Redis để làm message broker cho Celery
+  redis:
+    image: redis:7-alpine
+    container_name: crawler-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - crawler-network
+
+  # Service API backend với FastAPI
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: crawler-api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./app.db}
+    depends_on:
+      - redis
+    volumes:
+      - ./api:/app
+      - api_data:/app/data
+    networks:
+      - crawler-network
+    restart: unless-stopped
+
+  # Service Worker xử lý crawling với Celery
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: crawler-worker
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./app.db}
+    depends_on:
+      - redis
+      - api
+    volumes:
+      - ./worker:/app
+      - worker_data:/app/data
+    networks:
+      - crawler-network
+    restart: unless-stopped
+
+  # Service Web frontend với Next.js
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: crawler-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    networks:
+      - crawler-network
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  api_data:
+  worker_data:
+
+networks:
+  crawler-network:
+    driver: bridge

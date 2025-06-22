@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🕷️ Crawler On Demand - Professional Web Scraper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin-slow': 'spin 3s linear infinite',
+                        'bounce-subtle': 'bounce 2s infinite',
+                        'pulse-soft': 'pulse 2s infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen">
+    <!-- Header -->
+    <div class="gradient-bg shadow-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex items-center justify-between">
+                <div class="text-white">
+                    <h1 class="text-4xl font-bold flex items-center">
+                        🕷️ Crawler On Demand
+                        <span class="ml-3 text-lg font-normal opacity-80">v2.0 Professional</span>
+                    </h1>
+                    <p class="text-blue-100 mt-2 text-lg">Công cụ crawl website chuyên nghiệp với xuất Excel & CSV</p>
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm text-white px-6 py-4 rounded-xl border border-white/30">
+                    <div class="text-sm opacity-90">API Status</div>
+                    <div class="text-2xl font-bold flex items-center" id="apiStatus">
+                        <div class="animate-spin mr-2">🔄</div> Checking...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Stats Dashboard -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-6 mb-8" id="statsCards">
+            <!-- Stats loading placeholder -->
+            <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-gray-300 animate-pulse">
+                <div class="h-4 bg-gray-300 rounded mb-2"></div>
+                <div class="h-8 bg-gray-300 rounded"></div>
+            </div>
+            <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-gray-300 animate-pulse">
+                <div class="h-4 bg-gray-300 rounded mb-2"></div>
+                <div class="h-8 bg-gray-300 rounded"></div>
+            </div>
+            <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-gray-300 animate-pulse">
+                <div class="h-4 bg-gray-300 rounded mb-2"></div>
+                <div class="h-8 bg-gray-300 rounded"></div>
+            </div>
+            <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-gray-300 animate-pulse">
+                <div class="h-4 bg-gray-300 rounded mb-2"></div>
+                <div class="h-8 bg-gray-300 rounded"></div>
+            </div>
+            <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-gray-300 animate-pulse">
+                <div class="h-4 bg-gray-300 rounded mb-2"></div>
+                <div class="h-8 bg-gray-300 rounded"></div>
+            </div>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-8">
+            <!-- Left Panel - Single Crawl -->
+            <div class="space-y-6">
+                <div class="bg-white rounded-xl shadow-lg card-hover p-6 border border-gray-100">
+                    <div class="flex items-center mb-6">
+                        <div class="bg-blue-100 p-3 rounded-lg mr-4">
+                            <span class="text-2xl">🔗</span>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900">Single URL Crawl</h3>
+                            <p class="text-gray-600 text-sm">Crawl một website duy nhất chi tiết</p>
+                        </div>
+                    </div>
+                    
+                    <form id="singleCrawlForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Website URL</label>
+                            <input type="url" id="urlInput" placeholder="https://example.com" required
+                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Depth Level</label>
+                                <select id="depthSelect" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="1">🔍 1 Level</option>
+                                    <option value="2">🔍🔍 2 Levels</option>
+                                    <option value="3">🔍🔍🔍 3 Levels</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Max Pages</label>
+                                <select id="maxPagesSelect" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="1">📄 1 Page</option>
+                                    <option value="5">📄 5 Pages</option>
+                                    <option value="10">📄 10 Pages</option>
+                                    <option value="20">📄 20 Pages</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" id="crawlBtn"
+                            class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-lg hover:from-blue-700 hover:to-purple-700 font-semibold text-lg transition-all transform hover:scale-105 shadow-lg">
+                            🚀 Start Crawling
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="bg-white rounded-xl shadow-lg card-hover p-6 border border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                        ⚡ Quick Test Actions
+                    </h3>
+                    <div class="space-y-3">
+                        <button onclick="testCrawl('https://example.com')" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 px-4 rounded-lg transition-all text-sm">
+                            🧪 Test Example.com
+                        </button>
+                        <button onclick="testCrawl('https://httpbin.org/html')" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 px-4 rounded-lg transition-all text-sm">
+                            🧪 Test HTTPBin
+                        </button>
+                        <button onclick="testCrawl('https://quotes.toscrape.com')" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 px-4 rounded-lg transition-all text-sm">
+                            🧪 Test Quotes to Scrape
+                        </button>
+                        <button onclick="refreshAll()" class="w-full bg-green-100 hover:bg-green-200 text-green-800 py-2 px-4 rounded-lg transition-all text-sm">
+                            🔄 Refresh All Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Middle Panel - Batch Crawl -->
+            <div class="space-y-6">
+                <div class="bg-white rounded-xl shadow-lg card-hover p-6 border border-gray-100">
+                    <div class="flex items-center mb-6">
+                        <div class="bg-green-100 p-3 rounded-lg mr-4">
+                            <span class="text-2xl">📦</span>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900">Batch URL Crawl</h3>
+                            <p class="text-gray-600 text-sm">Crawl nhiều websites cùng lúc</p>
+                        </div>
+                    </div>
+                    
+                    <form id="batchCrawlForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">URLs (một dòng một URL)</label>
+                            <textarea id="batchUrlsInput" rows="8" 
+                                placeholder="https://example1.com&#10;https://example2.com&#10;https://example3.com&#10;https://github.com&#10;https://stackoverflow.com"
+                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none transition-all"></textarea>
+                        </div>
+                        
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <div class="flex items-center">
+                                <span class="text-blue-600 mr-2">💡</span>
+                                <span class="text-sm text-blue-800">Tip: Batch crawl tự động dùng depth=1, max_pages=5 cho mỗi URL để tối ưu tốc độ</span>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" id="batchCrawlBtn"
+                            class="w-full bg-gradient-to-r from-green-600 to-blue-600 text-white py-4 px-6 rounded-lg hover:from-green-700 hover:to-blue-700 font-semibold text-lg transition-all transform hover:scale-105 shadow-lg">
+                            📦 Start Batch Crawl
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Sample URLs -->
+                <div class="bg-white rounded-xl shadow-lg card-hover p-6 border border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                        🌟 Popular Sample URLs
+                    </h3>
+                    <div class="space-y-2">
+                        <button onclick="fillSampleUrls('vietnamese')" class="w-full bg-red-50 hover:bg-red-100 text-red-800 py-3 px-4 rounded-lg transition-all text-left font-medium">
+                            🇻🇳 Vietnamese News Sites
+                            <div class="text-xs opacity-75">VnExpress, Dân Trí, Thanh Niên, Genk.vn</div>
+                        </button>
+                        <button onclick="fillSampleUrls('tech')" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-800 py-3 px-4 rounded-lg transition-all text-left font-medium">
+                            💻 Tech & Developer Sites
+                            <div class="text-xs opacity-75">GitHub, Stack Overflow, Dev.to, Medium</div>
+                        </button>
+                        <button onclick="fillSampleUrls('ecommerce')" class="w-full bg-purple-50 hover:bg-purple-100 text-purple-800 py-3 px-4 rounded-lg transition-all text-left font-medium">
+                            🛒 E-commerce Sites
+                            <div class="text-xs opacity-75">Shopee, Tiki, Lazada, Sendo</div>
+                        </button>
+                        <button onclick="fillSampleUrls('test')" class="w-full bg-gray-50 hover:bg-gray-100 text-gray-800 py-3 px-4 rounded-lg transition-all text-left font-medium">
+                            🧪 Test & Demo Sites
+                            <div class="text-xs opacity-75">HTTPBin, Quotes, Books, Example</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Tasks & Results -->
+            <div class="space-y-6">
+                <div class="bg-white rounded-xl shadow-lg border border-gray-100">
+                    <div class="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50 rounded-t-xl">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold text-gray-900 flex items-center">
+                                📋 Crawl Tasks
+                                <span class="ml-3 bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full font-medium" id="taskCount">...</span>
+                            </h3>
+                            <div class="flex space-x-2">
+                                <button onclick="refreshTasks()" class="bg-white hover:bg-gray-50 border border-gray-300 px-3 py-2 rounded-lg text-sm transition-all shadow-sm">
+                                    🔄 Refresh
+                                </button>
+                                <button onclick="clearAllTasks()" class="bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 px-3 py-2 rounded-lg text-sm transition-all">
+                                    🗑️ Clear All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="tasksList" class="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+                        <div class="p-8 text-center text-gray-500">
+                            <div class="animate-bounce-subtle text-3xl mb-3">🕷️</div>
+                            <div class="text-lg font-medium">Loading tasks...</div>
+                            <div class="text-sm">Checking your crawl history</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Export & Features -->
+                <div class="bg-white rounded-xl shadow-lg card-hover p-6 border border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                        📊 Export & Features
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="bg-green-50 p-4 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-semibold text-green-800">📄 CSV Export</div>
+                                    <div class="text-sm text-green-600">Standard format for spreadsheets</div>
+                                </div>
+                                <div class="text-2xl">✅</div>
+                            </div>
+                        </div>
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-semibold text-blue-800">📊 Excel Export</div>
+                                    <div class="text-sm text-blue-600">Professional .xlsx with styling</div>
+                                </div>
+                                <div class="text-2xl">✨</div>
+                            </div>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-semibold text-purple-800">🔄 Auto Refresh</div>
+                                    <div class="text-sm text-purple-600">Real-time updates every 5 seconds</div>
+                                </div>
+                                <div class="text-2xl">⚡</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="text-center">
+                <div class="text-xl font-bold mb-2 gradient-text">🕷️ Crawler On Demand Professional</div>
+                <div class="text-gray-400 text-sm">Powered by FastAPI + Celery + Redis + Beautiful Vanilla JS</div>
+                <div class="text-gray-500 text-xs mt-2">
+                    Features: Multi-depth crawling • Batch processing • Excel export • Real-time monitoring
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        let isLoading = false;
+        let refreshInterval;
+
+        // Toast notification system
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+            const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500', warning: 'bg-yellow-500' };
+            
+            toast.className = `${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full max-w-sm`;
+            toast.innerHTML = `
+                <div class="flex items-center">
+                    <span class="mr-2">${icons[type]}</span>
+                    <span class="text-sm font-medium">${message}</span>
+                </div>
+            `;
+            
+            document.getElementById('toastContainer').appendChild(toast);
+            
+            setTimeout(() => toast.classList.remove('translate-x-full'), 100);
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // Check API status
+        async function checkApiStatus() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                if (response.ok) {
+                    document.getElementById('apiStatus').innerHTML = '<div class="text-green-400 mr-2">●</div> Online & Ready';
+                } else {
+                    document.getElementById('apiStatus').innerHTML = '<div class="text-red-400 mr-2">●</div> API Error';
+                }
+            } catch (error) {
+                document.getElementById('apiStatus').innerHTML = '<div class="text-red-400 mr-2">●</div> Offline';
+            }
+        }
+
+        // Load stats with beautiful cards
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_URL}/stats`);
+                if (response.ok) {
+                    const stats = await response.json();
+                    document.getElementById('statsCards').innerHTML = `
+                        <div class="bg-white rounded-xl shadow-lg card-hover p-6 border-l-4 border-yellow-400">
+                            <div class="flex items-center">
+                                <div class="bg-yellow-100 p-3 rounded-lg mr-4">
+                                    <span class="text-2xl">⏳</span>
+                                </div>
+                                <div>
+                                    <div class="text-yellow-600 text-sm font-medium">Pending</div>
+                                    <div class="text-3xl font-bold text-gray-900">${stats.pending_tasks || 0}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-lg card-hover p-6 border-l-4 border-blue-400">
+                            <div class="flex items-center">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-4">
+                                    <span class="text-2xl">🔄</span>
+                                </div>
+                                <div>
+                                    <div class="text-blue-600 text-sm font-medium">Running</div>
+                                    <div class="text-3xl font-bold text-gray-900">${stats.running_tasks || 0}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-lg card-hover p-6 border-l-4 border-green-400">
+                            <div class="flex items-center">
+                                <div class="bg-green-100 p-3 rounded-lg mr-4">
+                                    <span class="text-2xl">✅</span>
+                                </div>
+                                <div>
+                                    <div class="text-green-600 text-sm font-medium">Completed</div>
+                                    <div class="text-3xl font-bold text-gray-900">${stats.completed_tasks || 0}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-lg card-hover p-6 border-l-4 border-red-400">
+                            <div class="flex items-center">
+                                <div class="bg-red-100 p-3 rounded-lg mr-4">
+                                    <span class="text-2xl">❌</span>
+                                </div>
+                                <div>
+                                    <div class="text-red-600 text-sm font-medium">Failed</div>
+                                    <div class="text-3xl font-bold text-gray-900">${stats.failed_tasks || 0}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-lg card-hover p-6 border-l-4 border-purple-400">
+                            <div class="flex items-center">
+                                <div class="bg-purple-100 p-3 rounded-lg mr-4">
+                                    <span class="text-2xl">📈</span>
+                                </div>
+                                <div>
+                                    <div class="text-purple-600 text-sm font-medium">Last 24h</div>
+                                    <div class="text-3xl font-bold text-gray-900">${stats.tasks_last_24h || 0}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        // Load tasks with rich UI
+        async function loadTasks() {
+            try {
+                const response = await fetch(`${API_URL}/tasks?limit=20`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const tasks = data.tasks || [];
+                    document.getElementById('taskCount').textContent = tasks.length;
+                    
+                    if (tasks.length === 0) {
+                        document.getElementById('tasksList').innerHTML = `
+                            <div class="p-8 text-center text-gray-500">
+                                <div class="text-4xl mb-4">🕷️</div>
+                                <div class="text-lg font-medium">No crawl tasks yet</div>
+                                <div class="text-sm">Start crawling to see results here!</div>
+                            </div>
+                        `;
+                    } else {
+                        document.getElementById('tasksList').innerHTML = tasks.map(task => `
+                            <div class="p-4 hover:bg-gray-50 transition-colors">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center flex-wrap gap-2 mb-2">
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusClass(task.status)}">
+                                                ${getStatusIcon(task.status)} ${task.status.toUpperCase()}
+                                            </span>
+                                            ${task.result ? `
+                                                <span class="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                                                    📊 ${task.result.total_pages || 0} pages
+                                                </span>
+                                                <span class="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                                                    💾 ${Math.round((task.result.total_content_size || 0) / 1024)}KB
+                                                </span>
+                                            ` : ''}
+                                        </div>
+                                        <p class="text-sm font-medium text-gray-900 truncate mb-1" title="${task.url}">
+                                            ${task.url}
+                                        </p>
+                                        <p class="text-xs text-gray-500">
+                                            ${new Date(task.created_at).toLocaleString('vi-VN')}
+                                        </p>
+                                    </div>
+                                    <div class="flex flex-col space-y-1 ml-4">
+                                        ${task.result ? `
+                                            <button onclick="exportCSV('${task.id}')" 
+                                                class="inline-flex items-center px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded hover:bg-green-200 transition-colors" 
+                                                title="Export to CSV">📄 CSV</button>
+                                            <button onclick="exportExcel('${task.id}')" 
+                                                class="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded hover:bg-blue-200 transition-colors" 
+                                                title="Export to Excel">📊 Excel</button>
+                                        ` : ''}
+                                        <button onclick="deleteTask('${task.id}')" 
+                                            class="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 bg-red-100 rounded hover:bg-red-200 transition-colors" 
+                                            title="Delete Task">🗑️ Delete</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load tasks:', error);
+                showToast('Failed to load tasks', 'error');
+            }
+        }
+
+        function getStatusClass(status) {
+            switch (status) {
+                case 'completed': return 'bg-green-100 text-green-800';
+                case 'running': return 'bg-blue-100 text-blue-800';
+                case 'failed': return 'bg-red-100 text-red-800';
+                default: return 'bg-yellow-100 text-yellow-800';
+            }
+        }
+
+        function getStatusIcon(status) {
+            switch (status) {
+                case 'completed': return '✅';
+                case 'running': return '🔄';
+                case 'failed': return '❌';
+                default: return '⏳';
+            }
+        }
+
+        // Sample URLs
+        function fillSampleUrls(type) {
+            const samples = {
+                vietnamese: [
+                    'https://vnexpress.net',
+                    'https://dantri.com.vn', 
+                    'https://thanhnien.vn',
+                    'https://genk.vn'
+                ],
+                tech: [
+                    'https://github.com',
+                    'https://stackoverflow.com',
+                    'https://dev.to',
+                    'https://medium.com'
+                ],
+                ecommerce: [
+                    'https://shopee.vn',
+                    'https://tiki.vn',
+                    'https://lazada.vn',
+                    'https://sendo.vn'
+                ],
+                test: [
+                    'https://httpbin.org/html',
+                    'https://quotes.toscrape.com',
+                    'https://books.toscrape.com',
+                    'https://example.com'
+                ]
+            };
+            document.getElementById('batchUrlsInput').value = samples[type].join('\n');
+            showToast(`Loaded ${samples[type].length} sample URLs`, 'info');
+        }
+
+        // Test crawl function
+        async function testCrawl(url) {
+            document.getElementById('urlInput').value = url;
+            document.getElementById('singleCrawlForm').dispatchEvent(new Event('submit'));
+        }
+
+        // Single crawl form
+        document.getElementById('singleCrawlForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (isLoading) return;
+            
+            const url = document.getElementById('urlInput').value;
+            const depth = document.getElementById('depthSelect').value;
+            const maxPages = document.getElementById('maxPagesSelect').value;
+            
+            isLoading = true;
+            const btn = document.getElementById('crawlBtn');
+            btn.innerHTML = '🕷️ Crawling...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch(`${API_URL}/crawl`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, depth: parseInt(depth), max_pages: parseInt(maxPages) })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    document.getElementById('urlInput').value = '';
+                    await refreshAll();
+                    showToast(`✅ Crawl task created! Task ID: ${result.task_id}`, 'success');
+                } else {
+                    const error = await response.text();
+                    showToast(`❌ Failed to create crawl task: ${error}`, 'error');
+                }
+            } catch (error) {
+                showToast(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                isLoading = false;
+                btn.innerHTML = '🚀 Start Crawling';
+                btn.disabled = false;
+            }
+        });
+
+        // Batch crawl form
+        document.getElementById('batchCrawlForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (isLoading) return;
+            
+            const urls = document.getElementById('batchUrlsInput').value
+                .split('\n')
+                .map(u => u.trim())
+                .filter(u => u && u.startsWith('http'));
+            
+            if (urls.length === 0) {
+                showToast('⚠️ Please enter at least one valid URL', 'warning');
+                return;
+            }
+            
+            isLoading = true;
+            const btn = document.getElementById('batchCrawlBtn');
+            btn.innerHTML = '📦 Processing...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch(`${API_URL}/batch/crawl`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(urls)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    document.getElementById('batchUrlsInput').value = '';
+                    await refreshAll();
+                    showToast(`✅ Batch crawl created for ${urls.length} URLs! ${result.task_ids.length} tasks created`, 'success');
+                } else {
+                    const error = await response.text();
+                    showToast(`❌ Failed to create batch crawl: ${error}`, 'error');
+                }
+            } catch (error) {
+                showToast(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                isLoading = false;
+                btn.innerHTML = '📦 Start Batch Crawl';
+                btn.disabled = false;
+            }
+        });
+
+        // Export functions
+        function exportCSV(taskId) {
+            window.open(`${API_URL}/export/csv/${taskId}`, '_blank');
+            showToast('📄 Downloading CSV file...', 'info');
+        }
+
+        function exportExcel(taskId) {
+            window.open(`${API_URL}/export/excel/${taskId}`, '_blank');
+            showToast('📊 Downloading Excel file...', 'info');
+        }
+
+        // Delete task
+        async function deleteTask(taskId) {
+            if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/tasks/${taskId}`, { method: 'DELETE' });
+                if (response.ok) {
+                    await refreshAll();
+                    showToast('✅ Task deleted successfully!', 'success');
+                } else {
+                    showToast('❌ Failed to delete task', 'error');
+                }
+            } catch (error) {
+                showToast(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Clear all tasks
+        async function clearAllTasks() {
+            if (!confirm('Are you sure you want to delete ALL tasks? This will permanently remove all crawl data and cannot be undone!')) return;
+            
+            try {
+                const tasksResponse = await fetch(`${API_URL}/tasks`);
+                const tasksData = await tasksResponse.json();
+                const tasks = tasksData.tasks || [];
+                
+                if (tasks.length === 0) {
+                    showToast('ℹ️ No tasks to delete', 'info');
+                    return;
+                }
+                
+                let deleted = 0;
+                for (const task of tasks) {
+                    try {
+                        await fetch(`${API_URL}/tasks/${task.id}`, { method: 'DELETE' });
+                        deleted++;
+                    } catch (e) {
+                        console.error('Failed to delete task:', task.id);
+                    }
+                }
+                
+                await refreshAll();
+                showToast(`✅ Successfully deleted ${deleted} out of ${tasks.length} tasks!`, 'success');
+            } catch (error) {
+                showToast(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Refresh functions
+        async function refreshAll() {
+            await Promise.all([checkApiStatus(), loadStats(), loadTasks()]);
+        }
+
+        async function refreshTasks() {
+            await loadTasks();
+            showToast('🔄 Tasks refreshed', 'info');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            showToast('🚀 Crawler interface loaded successfully!', 'success');
+            await refreshAll();
+            
+            // Auto-refresh every 5 seconds
+            refreshInterval = setInterval(refreshAll, 5000);
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (refreshInterval) clearInterval(refreshInterval);
+        });
+    </script>
+</body>
+</html> 
