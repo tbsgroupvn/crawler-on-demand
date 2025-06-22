@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Test - Netlify</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f0f0f0; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .success { color: green; font-weight: bold; }
+        .button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        .button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 Netlify Test SUCCESS!</h1>
+        <p class="success">✅ This page is loading correctly on Netlify!</p>
+        
+        <h2>Test Results:</h2>
+        <ul>
+            <li>✅ HTML parsing: OK</li>
+            <li>✅ CSS loading: OK</li>
+            <li>✅ File serving: OK</li>
+            <li id="js-test">⏳ JavaScript: Testing...</li>
+        </ul>
+        
+        <h2>Navigation Test:</h2>
+        <button class="button" onclick="location.href='/index.html'">Go to Full Demo</button>
+        <button class="button" onclick="location.href='/test.html'">Go to Test Page</button>
+        
+        <h2>Debug Info:</h2>
+        <div id="debug-info">
+            <p><strong>URL:</strong> <span id="current-url"></span></p>
+            <p><strong>Host:</strong> <span id="current-host"></span></p>
+            <p><strong>Time:</strong> <span id="current-time"></span></p>
+        </div>
+        
+        <hr>
+        <p><strong>Repository:</strong> <a href="https://github.com/tbsgroupvn/crawler-on-demand">GitHub</a></p>
+    </div>
+    
+    <script>
+        // Test JavaScript
+        document.getElementById('js-test').innerHTML = '✅ JavaScript: OK';
+        
+        // Debug info
+        document.getElementById('current-url').textContent = window.location.href;
+        document.getElementById('current-host').textContent = window.location.hostname;
+        document.getElementById('current-time').textContent = new Date().toLocaleString();
+        
+        console.log('✅ Simple test page loaded successfully!');
+        console.log('URL:', window.location.href);
+        console.log('Host:', window.location.hostname);
+    </script>
+</body>
+</html> 

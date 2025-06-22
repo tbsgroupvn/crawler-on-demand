@@ -1,9 +1,16 @@
 # Netlify redirects for Crawler On Demand Demo
 
-# Handle all routes to index.html for SPA behavior  
-/*    /index.html   200
+# Root redirect (most important)
+/                 /index.html     200
+
+# Test pages
+/simple           /simple.html    200
+/test             /test.html      200
+
+# SPA behavior for all other routes
+/*                /index.html     200
 
 # External redirects
-/github   https://github.com/tbsgroupvn/crawler-on-demand   302
-/deploy   https://github.com/tbsgroupvn/crawler-on-demand#-quick-start   302
-/docs     https://github.com/tbsgroupvn/crawler-on-demand#-api-endpoints   302 
+/github           https://github.com/tbsgroupvn/crawler-on-demand   302
+/deploy           https://github.com/tbsgroupvn/crawler-on-demand#-quick-start   302
+/docs             https://github.com/tbsgroupvn/crawler-on-demand#-api-endpoints   302 
