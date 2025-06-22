@@ -497,6 +497,14 @@
                             <span>🌟</span>
                             <span>GitHub.com</span>
                         </button>
+                        <button onclick="quickStart('vnexpress')" class="btn btn-outline">
+                            <span>📰</span>
+                            <span>VnExpress</span>
+                        </button>
+                        <button onclick="quickStart('thanhnien')" class="btn btn-outline">
+                            <span>📰</span>
+                            <span>Thanh Niên</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -535,13 +543,14 @@
 
                 <div style="padding: 1rem; background: #fffbeb; border: 1px solid #fed7aa; border-radius: 0.5rem;">
                     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <span style="font-size: 1.25rem;">💡</span>
-                        <span style="font-weight: 600; color: #92400e;">Xử lý lỗi HTTP 408</span>
+                        <span style="font-size: 1.25rem;">🔧</span>
+                        <span style="font-weight: 600; color: #92400e;">Xử lý website Việt Nam</span>
                     </div>
                     <ul style="font-size: 0.75rem; color: #b45309; margin: 0; padding-left: 1rem;">
-                        <li>Timeout 15 giây với tự động retry 2 lần</li>
-                        <li>Delay tăng dần giữa các lần thử</li>
-                        <li>Kiểm tra truy cập trước khi crawl</li>
+                        <li>4 proxy servers tự động fallback</li>
+                        <li>Headers tiếng Việt (vi-VN) optimized</li>
+                        <li>Timeout 20 giây + retry thông minh</li>
+                        <li>Xử lý website có chặn bot/CORS</li>
                         <li>Thông báo lỗi chi tiết bằng tiếng Việt</li>
                     </ul>
                 </div>
@@ -668,12 +677,16 @@
         function quickStart(type) {
             const urls = {
                 example: 'https://example.com',
-                github: 'https://github.com'
+                github: 'https://github.com',
+                vnexpress: 'https://vnexpress.net',
+                thanhnien: 'https://thanhnien.vn',
+                dantri: 'https://dantri.com.vn'
             };
 
             const url = urls[type];
             if (url) {
                 document.getElementById('urlInput').value = url;
+                showToast(`🎯 Chọn website: ${url}`, 'info', 2000);
                 startCrawl(url, 'quick');
             }
         }
@@ -1061,41 +1074,112 @@
         }
 
         async function crawlSinglePage(url) {
-            try {
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-                
-                // Add timeout and retry logic
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
-                
-                const response = await fetch(proxyUrl, {
-                    signal: controller.signal,
-                    headers: {
-                        'Accept': 'application/json',
-                        'User-Agent': 'Mozilla/5.0 (compatible; WebCrawler/1.0)'
+            // Multiple CORS proxies for better success rate
+            const corsProxies = [
+                `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+                `https://corsproxy.io/?${encodeURIComponent(url)}`,
+                `https://cors-anywhere.herokuapp.com/${url}`,
+                `https://thingproxy.freeboard.io/fetch/${url}`
+            ];
+            
+            const userAgents = [
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0'
+            ];
+            
+            let lastError = null;
+            
+            // Try each proxy
+            for (let i = 0; i < corsProxies.length; i++) {
+                try {
+                    const proxyUrl = corsProxies[i];
+                    const userAgent = userAgents[i % userAgents.length];
+                    
+                    console.log(`Trying proxy ${i + 1}/${corsProxies.length}: ${proxyUrl.split('?')[0]}`);
+                    
+                    // Add timeout and retry logic
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+                    
+                    const response = await fetch(proxyUrl, {
+                        signal: controller.signal,
+                        headers: {
+                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                            'Accept-Language': 'vi-VN,vi;q=0.9,en;q=0.8',
+                            'Accept-Encoding': 'gzip, deflate, br',
+                            'User-Agent': userAgent,
+                            'Referer': 'https://google.com/',
+                            'DNT': '1',
+                            'Connection': 'keep-alive',
+                            'Upgrade-Insecure-Requests': '1'
+                        }
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (!response.ok) {
+                        // Handle specific HTTP errors
+                        if (response.status === 408) {
+                            throw new Error(`Timeout - Website phản hồi quá chậm (${response.status})`);
+                        } else if (response.status === 403) {
+                            throw new Error(`Bị chặn - Website không cho phép truy cập (${response.status})`);
+                        } else if (response.status === 404) {
+                            throw new Error(`Không tìm thấy trang (${response.status})`);
+                        } else if (response.status >= 500) {
+                            throw new Error(`Lỗi server - Website gặp sự cố (${response.status})`);
+                        } else {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
                     }
-                });
-                
-                clearTimeout(timeoutId);
-                
-                if (!response.ok) {
-                    // Handle specific HTTP errors
-                    if (response.status === 408) {
-                        throw new Error(`Timeout - Website phản hồi quá chậm (${response.status})`);
-                    } else if (response.status === 403) {
-                        throw new Error(`Bị chặn - Website không cho phép truy cập (${response.status})`);
-                    } else if (response.status === 404) {
-                        throw new Error(`Không tìm thấy trang (${response.status})`);
-                    } else if (response.status >= 500) {
-                        throw new Error(`Lỗi server - Website gặp sự cố (${response.status})`);
+                    
+                    // Get content based on proxy type
+                    let htmlContent;
+                    if (proxyUrl.includes('allorigins.win')) {
+                        const data = await response.json();
+                        htmlContent = data.contents;
                     } else {
-                        throw new Error(`HTTP ${response.status}`);
+                        htmlContent = await response.text();
                     }
+                    
+                    if (!htmlContent || htmlContent.length < 100) {
+                        throw new Error('Nội dung trang quá ngắn hoặc rỗng');
+                    }
+                    
+                    // Parse and return successful result
+                    return await parseHtmlContent(htmlContent, url);
+                    
+                } catch (error) {
+                    lastError = error;
+                    console.log(`Proxy ${i + 1} failed: ${error.message}`);
+                    
+                    // If this is the last proxy, throw the error
+                    if (i === corsProxies.length - 1) {
+                        break;
+                    }
+                    
+                    // Wait before trying next proxy
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
-                
-                const data = await response.json();
-                const htmlContent = data.contents;
-                
+            }
+            
+            // All proxies failed
+            if (lastError) {
+                // Handle AbortError (timeout)
+                if (lastError.name === 'AbortError') {
+                    throw new Error('Timeout - Tất cả proxy đều quá chậm');
+                }
+                // Handle network errors
+                if (lastError.message.includes('NetworkError') || lastError.message.includes('Failed to fetch')) {
+                    throw new Error('Lỗi mạng - Website có thể chặn truy cập từ proxy');
+                }
+                throw lastError;
+            }
+        }
+        
+        // Helper function to parse HTML content
+        async function parseHtmlContent(htmlContent, url) {
+            try {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(htmlContent, 'text/html');
                 
@@ -1142,15 +1226,7 @@
                 };
                 
             } catch (error) {
-                // Handle AbortError (timeout)
-                if (error.name === 'AbortError') {
-                    throw new Error('Timeout - Kết nối bị ngắt do quá chậm');
-                }
-                // Handle network errors
-                if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
-                    throw new Error('Lỗi mạng - Không thể kết nối tới website');
-                }
-                throw error;
+                throw new Error(`Lỗi phân tích HTML: ${error.message}`);
             }
         }
 
